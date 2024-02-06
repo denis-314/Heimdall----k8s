@@ -1,4 +1,4 @@
-# Namespace for heimdall
+# Namespace
 
 apiVersion: v1
 kind: Namespace
@@ -6,7 +6,7 @@ metadata:
   name: heimdall
 ---
 
-# Storage Class for heimdall app
+# Storage Class
 
 kind: StorageClass
 apiVersion: storage.k8s.io/v1
@@ -25,7 +25,7 @@ allowVolumeExpansion: true
 reclaimPolicy: Retain
 ---
 
-#Heimdall PV
+# PV
 
 apiVersion: v1
 kind: PersistentVolume
@@ -47,7 +47,7 @@ spec:
     path: "/home/k8sadmin/heimdall_kube_files/volume-files"
 ---
 
-# Heimdall PVC
+# PVC
 
 apiVersion: v1
 kind: PersistentVolumeClaim
@@ -65,7 +65,7 @@ spec:
       storage: 1Gi
 ---
 
-# Heimdall Deployment
+# Deployment
 
 apiVersion: apps/v1
 kind: Deployment
@@ -115,6 +115,8 @@ spec:
          - mountPath: /config               # < mount location in the container
            name: heimdall-volume              # < volumelabel configured earlier in the yaml file
 ---
+
+# Service
 
 kind: Service
 apiVersion: v1
