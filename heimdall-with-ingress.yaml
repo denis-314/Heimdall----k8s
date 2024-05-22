@@ -1,0 +1,163 @@
+# Namespace for heimdall
+
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: heimdall
+---
+
+# Storage Class for heimdall app
+
+kind: StorageClass
+apiVersion: storage.k8s.io/v1
+
+metadata:
+  name: heimdall-storageclass
+  namespace: heimdall
+
+provisioner: k8s.io/minikube-hostpath
+volumeBindingMode: Immediate
+
+parameters:
+ type: gp2 # This configures SSDs
+
+allowVolumeExpansion: true
+reclaimPolicy: Retain
+---
+
+#Heimdall PV
+
+apiVersion: v1
+kind: PersistentVolume
+
+metadata:
+  name: heimdall-pv
+  namespace: heimdall
+  labels:
+    type: local
+
+spec:
+  storageClassName: heimdall-storageclass
+  capacity:
+    storage: 1Gi
+  accessModes:
+    - ReadWriteMany
+  persistentVolumeReclaimPolicy: Retain
+  hostPath:
+    path: "/home/k8sadmin/heimdall_kube_files/volume-files"
+---
+
+# Heimdall PVC
+
+apiVersion: v1
+kind: PersistentVolumeClaim
+
+metadata:
+  name: heimdall-pvc
+  namespace: heimdall
+
+spec:
+  accessModes:
+    - ReadWriteMany
+  storageClassName: heimdall-storageclass
+  resources:
+    requests:
+      storage: 1Gi
+---
+
+# Heimdall Deployment
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: heimdall        # < name of the deployment
+  namespace: heimdall   # < namespace where place the deployment and pods
+  labels:
+    app: heimdall       # < label for tagging and reference
+spec:
+  replicas: 1           # < number of pods to deploy
+  selector:
+    matchLabels:
+      app: heimdall
+  strategy:
+    rollingUpdate:
+      maxSurge: 0       # < The number of pods that can be created above the desired amount of pods during an update
+      maxUnavailable: 1 # < The number of pods that can be unavailable during the update process
+    type: RollingUpdate # < New pods are added gradually, and old pods are terminated gradually
+  template:
+    metadata:
+      labels:
+        app: heimdall
+    spec:
+      volumes:
+      - name: heimdall-volume  # < linkname of the volume for the pvc
+        persistentVolumeClaim:
+          claimName: heimdall-pvc # < pvc name we created in the previous yaml
+      containers:
+      - image: lscr.io/linuxserver/heimdall:latest # < the name of the docker image we will use
+        name: heimdall                      # < name of container
+        imagePullPolicy: Always             # < always use the latest image when creating container/pod
+        env:                                # < the environment variables required (see container documentation)
+        - name: PGID
+          value: "1000" # < group "user"
+        - name: PUID
+          value: "1000" # < user "docker"
+        - name: TZ
+          value: Europe/Bucharest
+          #- name: ASSET_URL
+          #value: http://gandalf.go.ro
+        - name: APP_ENV
+          value: http://gandalf.go.ro
+        - name: APP_URL
+          value: http://gandalf.go.ro
+        ports:                              # < the ports required (see container documentation)
+         - containerPort: 80
+           name: http-80
+           protocol: TCP
+         - containerPort: 443
+           name: https-443
+           protocol: TCP
+        volumeMounts:                       # < the volume mount in the container. Look at the relation volumelabel->pvc->pv
+         - mountPath: /config               # < mount location in the container
+           name: heimdall-volume              # < volumelabel configured earlier in the yaml file
+---
+
+kind: Service
+apiVersion: v1
+metadata:
+  name: heimdall-service    # < name of the service
+  namespace: heimdall       # < namespace where place the deployment and pods
+spec:
+  selector:
+    app: heimdall           # < reference to the deployment (connects with this deployment)
+  ports:
+    - name: http-80
+      protocol: TCP
+      port: 80
+    - name: https-443
+      protocol: TCP
+      port: 443
+---
+
+# ingress resource Heimdall
+
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: heimdall-ingress
+  namespace: heimdall
+  annotations:
+          #nginx.ingress.kubernetes.io/rewrite-target: /$1
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: gandalf.go.ro
+      http:
+        paths:
+          - path: /
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: heimdall-service
+                port:
+                  name: http-80
