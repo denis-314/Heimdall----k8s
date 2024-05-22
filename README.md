@@ -20,13 +20,13 @@ DEPLOYMENT STEPS:
 
 ---
 
-- Option 1: with "pathType: ImplementationSpecific" (will redirect only to https 443)
+- Option 1: with "pathType: ImplementationSpecific"
 - Left side image: Ingress rule for Heimdall
 - Right side image: .env config file in the persistent volume
 
 ![image](https://github.com/denis-314/Heimdall----k8s/assets/112620749/4317324a-1ed7-4f76-accd-8007a592b0de)
 
-- Option 2: with "pathType: Prefix" (will redirect only to http 80)
+- Option 2: with "pathType: Prefix"
 - Left side image: Ingress rule for Heimdall
 - Right side image: .env config file in the persistent volume
 
